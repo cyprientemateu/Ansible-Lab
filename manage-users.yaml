@@ -1,0 +1,82 @@
+---
+- hosts: all
+  become: yes
+  vars_files:
+    - "users.yml"
+  tasks:
+    - name: Ensure required groups exist
+      group:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - sudo
+        - developers
+        - admins
+
+    - name: Check if user exists
+      getent:
+        database: passwd
+        key: "{{ item.name }}"
+      register: user_exists
+      with_items: "{{ users }}"
+      ignore_errors: yes
+
+    - name: Create users
+      user:
+        name: "{{ item.name }}"
+        comment: "{{ item.full_name }}"
+        groups: "{{ item.groups | join(',') }}"
+        shell: "{{ item.shell }}"
+        state: "{{ item.state }}"
+        createhome: yes
+      when: user_exists is failed
+      with_items: "{{ users }}"
+
+    - name: Add SSH keys
+      authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ item.ssh_key }}"
+        state: present
+      with_items: "{{ users }}"
+      when: item.state == 'present'
+
+    - name: Add to sudoers
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: "^{{ item.name }}"
+        line: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL"
+      with_items: "{{ users }}"
+      when: item.sudoers == 'yes' and item.sudo_nopasswd == 'yes'
+
+    - name: Add to sudoers with password
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: "^{{ item.name }}"
+        line: "{{ item.name }} ALL=(ALL) ALL"
+      with_items: "{{ users }}"
+      when: item.sudoers == 'yes' and item.sudo_nopasswd != 'yes'
+
+    - name: Delete users
+      user:
+        name: "{{ item.name }}"
+        state: absent
+        remove: yes
+      when: item.state == 'absent'
+      with_items: "{{ users }}"
+
+    - name: Disable users
+      user:
+        name: "{{ item.name }}"
+        state: present
+        password_lock: yes
+      when: item.state == 'disabled'
+      with_items: "{{ users }}"
+
+    - name: Change user shell
+      user:
+        name: "{{ item.name }}"
+        shell: "{{ item.new_shell }}"
+      when: item.new_shell is defined
+      with_items: "{{ users }}"

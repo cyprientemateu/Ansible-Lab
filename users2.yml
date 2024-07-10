@@ -1,0 +1,17 @@
+users:
+  - name: "jdoe"
+    full_name: "John Doe"
+    groups: ["developers", "sudo"]
+    shell: "/bin/bash"
+    ssh_key: "ssh-rsa AAAA..."
+    sudoers: "yes"
+    sudo_nopasswd: "yes"
+    state: "present"
+  - name: "asmith"
+    full_name: "Alice Smith"
+    groups: ["admins"]
+    shell: "/bin/zsh"
+    ssh_key: "ssh-rsa BBBB..."
+    sudoers: "no"
+    state: "present"
+
