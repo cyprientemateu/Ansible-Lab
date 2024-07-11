@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+
+    environment {
+        // ANSIBLE_VAULT_PASSWORD = credentials('ansible-vault-password')
+        ANSIBLE_HOME = '/home/ec2-user/ansible-dev'  // Path to Ansible on the remote server
+    }
+
+    stages {
+        // stage('Validate') {
+        //     steps {
+        //         script {
+        //             // Perform syntax check on the Ansible playbook
+        //             sh 'ansible-playbook --syntax-check manage-users.yml'
+        //         }
+        //     }
+        // }
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/cyprientemateu/Ansible-Lab.git'  // Replace with your Git repository URL
+            }
+        }
+
+        stage('Run Ansible Playbook on Remote Server') {
+            steps {
+                sshagent(['ansible_ssh']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no user@ansible-server << EOF
+                    cd /home/ec2-user/ansible-dev  # Change to the directory containing your playbook
+                    ${ANSIBLE_HOME}/ansible-playbook --syntax-check manage-users.yml
+                    ${ANSIBLE_HOME}/ansible-playbook -i inventory.yml manage-users.yml --extra-vars "@users.yml"  # Replace with your playbook and inventory
+                    EOF
+                    '''
+                }
+            }
+        }
+        // stage('Deploy') {
+        //     steps {
+        //         script {
+        //             // Execute the Ansible playbook to manage user accounts
+        //             sh '''
+        //                 ansible-playbook -i inventory.yml manage-users.yml \
+        //                 --extra-vars "@users.yml" \
+        //                 --vault-password-file <(echo $ANSIBLE_VAULT_PASSWORD)
+        //             '''
+        //         }
+        //     }
+        // }
+    }
+    post {
+        always {
+            // Archive the results, logs, and any other important files
+            archiveArtifacts artifacts: '**/logs/*.log', allowEmptyArchive: true
+        }
+    }
+}

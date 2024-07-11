@@ -1,0 +1,49 @@
+---
+
+- name: Installing Tomcate
+  hosts: webservers
+  become: true
+  vars:
+    req_java: java-1.8.0-openjdk
+    set_default_java: jre-1.8.0-openjdk
+    req_tomcat_version: 9.0.73
+    tomcat_url: https://dlcdn.apache.org/tomcat/tomcat-{{req_tomcat_version.split('.')[0]}}/v{{req_tomcat_version}}/bin/apache-tomcat-{{req_tomcat_version}}.tar.gz
+
+
+  tasks:
+
+  - name: Upgrade all packages
+    ansible.builtin.yum:
+      name: "*"
+      state: latest
+
+  - name: Install Java
+    ansible.builtin.yum:
+      name: "{{req_java}}"
+      state: present    
+
+  - name: Default Java from version 7 to 8
+    alternatives:
+      name: java
+      link: /usr/bin/java
+      path: /usr/lib/jvm/{{set_default_java}}/bin/java 
+
+  - name: Download Tar file of tomcate
+    ansible.builtin.get_url:
+      url: "{{tomcat_url}}"
+      dest: /usr/local
+      
+  - name: Unzip downloaded tomcat
+    ansible.builtin.unarchive:
+      src: "/usr/local/apache-tomcat-{{req_tomcat_version}}.tar.gz"
+      dest: /usr/local
+      remote_src: yes
+
+  - name: Renaming the tomcat home dir from the apache-tomcat-9.0.73 to a simple home name
+    ansible.builtin.command: mv /usr/local/apache-tomcat-{{req_tomcat_version}} /usr/local/tomcat
+
+##Use shell command because tomcat has a shellscript after unzipping
+
+  - name: Starting tomcat
+    ansible.builtin.shell: nohup /usr/local/tomcat/bin/startup.sh &  
+

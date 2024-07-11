@@ -1,0 +1,33 @@
+---
+- name: Deploying HTML file using ansible
+  hosts: webservers
+  become: true
+  
+  tasks:
+
+  - name: Installing Apache
+    ansible.builtin.yum:
+      pkg: httpd
+      state: latest  
+
+  - name: Start httpd service
+    ansible.builtin.service:
+      name: httpd
+      state: started
+
+  - name: Enable httpd service
+    ansible.builtin.service:
+      name: httpd
+      enabled: yes
+
+  - name: Deploying static website to /var/www/html directory of host servers
+    git:
+      repo: 'https://github.com/ARREYETTA14/fridaindex.html.git'
+      dest: /tmp/      
+
+  - name: Copy Fridaindex.html file to remote host
+    ansible.builtin.copy:
+      src: /tmp/fridaindex.html
+      dest: /var/www/html/index.html
+    
+   

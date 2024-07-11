@@ -1,0 +1,38 @@
+---
+## To create a YAML file that is encrypted at once
+
+ansible-vault create create_user_with_password.yml 
+
+## To encrypt an already existing file or playbook with criticsl information
+
+ansible-vault encrypt create_user.yml
+
+## To decrypt a YAML file that is encrypted
+
+ansible-vault decrypt create_user.yml
+
+## To view content of encrypted file
+
+ansible-vault view create_user_with_password.yml
+
+## To edit encrypted file
+
+ansible-vault edit create_user_with_password.yml
+
+## How to run an encrypted playbook
+
+ansible-playbook create_user_with_password.yml --ask-vault-pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+## the .yml is the file name

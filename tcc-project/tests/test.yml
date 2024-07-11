@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: yes
+  roles:
+    - tcc-project
+
+# - hosts: localhost
+#   remote_user: root
+#   roles:
+#     - tcc-project

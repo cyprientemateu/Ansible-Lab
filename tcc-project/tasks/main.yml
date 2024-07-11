@@ -1,0 +1,87 @@
+---
+# tasks file for tcc-project
+
+- name: Check if user exists
+  getent:
+    database: passwd
+    key: "{{ item.name }}"
+  register: user_exists
+  with_items: "{{ users }}"
+  ignore_errors: true
+  loop_control:
+    loop_var: user_item
+
+- name: Create users
+  user:
+    name: "{{ item.name }}"
+    comment: "{{ item.full_name }}"
+    uid: "{{ lookup('password', '/dev/null length=5 chars=digits') }}"
+    groups: "{{ item.groups | join(',') }}"
+    shell: "{{ item.shell }}"
+    state: "{{ item.state }}"
+    createhome: yes
+  when: "user_exists.results[ansible_loop.index].failed"
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item
+
+- name: Add SSH keys
+  authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_key }}"
+    state: present
+  when: item.state == 'present'
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item
+
+- name: Add to sudoers
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: "^{{ item.name }}"
+    line: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL"
+  when: item.sudoers == 'yes' and item.sudo_nopasswd == 'yes'
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item
+
+- name: Add to sudoers with password
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: "^{{ item.name }}"
+    line: "{{ item.name }} ALL=(ALL) ALL"
+  when: item.sudoers == 'yes' and item.sudo_nopasswd != 'yes'
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item
+
+- name: Delete users
+  user:
+    name: "{{ item.name }}"
+    state: absent
+    remove: yes
+  when: item.state == 'absent'
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item
+
+- name: Disable users
+  user:
+    name: "{{ item.name }}"
+    state: present
+    password_lock: yes
+  when: item.state == 'disabled'
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item
+
+- name: Change user shell
+  user:
+    name: "{{ item.name }}"
+    shell: "{{ item.new_shell }}"
+  when: item.new_shell is defined
+  with_items: "{{ users }}"
+  loop_control:
+    loop_var: user_item

@@ -1,0 +1,154 @@
+---
+- name: User and Group Management
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Sanity Check
+      fail:
+        msg: "{{ item.value.description }}"
+      when: item.value.default == '' and vars[item.key] == ''
+      with_dict:
+        USERNAME: { description: Enter username, default: "" }
+        PASSWORD: { description: Enter password, default: "" }
+        EMAIL: { description: Enter email, default: "" }
+        FIRSTNAME: { description: Enter first name, default: "" }
+        LASTNAME: { description: Enter last name, default: "" }
+
+    - name: Collect Information
+      debug:
+        msg: |
+          Username: {{ USERNAME }}
+          Password: {{ PASSWORD }}
+          Email: {{ EMAIL }}
+          First Name: {{ FIRSTNAME }}
+          Last Name: {{ LASTNAME }}
+
+    - name: Create User Account
+      when: ACCOUNT_MANAGEMENT == 'add_user'
+      become: true
+      block:
+        - name: Check if User exists
+          shell: grep -q '^{{ USERNAME }}:' /etc/passwd
+          register: user_exists
+          ignore_errors: true
+
+        - name: Create User if not exists
+          command: useradd -m {{ USERNAME }}
+          when: user_exists.rc != 0
+
+        - name: Set User Password
+          command: echo '{{ USERNAME }}:{{ PASSWORD }}' | chpasswd
+          when: user_exists.rc != 0
+
+        - name: Set User Full Name
+          command: usermod -c '{{ FIRSTNAME }} {{ LASTNAME }}' {{ USERNAME }}
+          when: user_exists.rc != 0
+
+        - name: Display User Information
+          command: cat /etc/passwd | grep {{ USERNAME }}
+          when: user_exists.rc != 0
+
+    - name: Delete User Account
+      when: ACCOUNT_MANAGEMENT == 'delete_user'
+      become: true
+      block:
+        - name: Check if User exists
+          shell: grep -q '^{{ USERNAME }}:' /etc/passwd
+          register: user_exists
+
+        - name: Delete User if exists
+          command: userdel -r {{ USERNAME }}
+          when: user_exists.rc == 0
+
+    - name: Lock User Account
+      when: ACCOUNT_MANAGEMENT == 'lock_user'
+      become: true
+      block:
+        - name: Check if User exists
+          shell: grep -q '^{{ USERNAME }}:' /etc/passwd
+          register: user_exists
+
+        - name: Lock User if exists
+          command: passwd -l {{ USERNAME }}
+          when: user_exists.rc == 0
+
+    - name: Unlock User Account
+      when: ACCOUNT_MANAGEMENT == 'unlock_user'
+      become: true
+      ignore_errors: true  # Use ignore_errors directly on the task
+      block:
+        - name: Check if User exists
+          command: getent passwd {{ USERNAME }}
+          register: user_exists
+
+        - name: Set User Password if not exists
+          command: >
+            echo '{{ USERNAME }}:password' | chpasswd
+          when: user_exists.rc != 0
+
+        - name: Unlock User if exists
+          command: passwd -u {{ USERNAME }}
+          when: user_exists.rc == 0
+
+    - name: Create Group
+      when: ACCOUNT_MANAGEMENT == 'create_group'
+      become: true
+      block:
+        - name: Check if Group exists
+          shell: grep -q '^{{ GROUP_NAME }}:' /etc/group
+          register: group_exists
+          ignore_errors: true
+
+        - name: Create Group if not exists
+          command: groupadd {{ GROUP_NAME }}
+          when: group_exists.rc != 0
+
+        - name: Print Message in Create Group Block
+          debug:
+            msg: "Group '{{ GROUP_NAME }}' has been created."
+
+    - name: Add User to Group
+      when: ACCOUNT_MANAGEMENT == 'add_user_to_group'
+      become: true
+      block:
+        - name: Check if User exists
+          command: id -u {{ USERNAME }}
+          register: user_exists
+          ignore_errors: true
+
+        - name: Check if Group exists
+          command: getent group {{ GROUP_NAME }}
+          register: group_exists
+          ignore_errors: true
+
+        - name: Create User if not exists
+          command: useradd -m -s /bin/bash {{ USERNAME }}
+          when: user_exists.rc != 0
+
+        - name: Create Group if not exists
+          command: groupadd {{ GROUP_NAME }}
+          when: group_exists.rc != 0
+
+        - name: Add User to Group
+          command: usermod -aG {{ GROUP_NAME }} {{ USERNAME }}
+
+        - name: Print Message under Add User to Group Block
+          debug:
+            msg: "User '{{ USERNAME }}' has been added to group '{{ GROUP_NAME }}'."
+
+    - name: Remove User from Group
+      when: ACCOUNT_MANAGEMENT == 'remove_user_from_group'
+      become: true
+      block:
+        - name: Check if Group exists
+          command: getent group {{ GROUP_NAME }}
+          register: group_exists
+          ignore_errors: true
+
+        - name: Remove User from Group if exists
+          command: deluser {{ USERNAME }} {{ GROUP_NAME }}
+          when: group_exists.rc == 0
+
+        - name: Print Message under Remove User from Group Block
+          debug:
+            msg: "User '{{ USERNAME }}' has been removed from group '{{ GROUP_NAME }}'."
