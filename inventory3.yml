@@ -1,8 +1,0 @@
-all:
-  hosts:
-    ubuntu-server-1:
-      ansible_host: 54.160.152.100
-      ansible_user: ubuntu
-    centos-server-1:
-      ansible_host: 35.175.192.100
-      ansible_user: ec2-user
