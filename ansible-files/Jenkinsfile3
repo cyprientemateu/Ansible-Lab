@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    environment {
+        ANSIBLE_PLAYBOOK_CMD = "ansible-playbook -i ~/tcc-ansible/inventory.yml ~/tcc-ansible/manage-users.yml --extra-vars '@~/tcc-ansible/users.yml'"
+        SSH_KEY_PATH = '/home/ubuntu/.ssh/id_rsa'  // Update this path to your private key
+        ANSIBLE_HOME = '/home/ubuntu/tcc-ansible'
+    }
+
+    stages {
+        stage('Add GitHub to Known Hosts') {
+            steps {
+                sh '''
+                ssh-keyscan github.com >> ~/.ssh/known_hosts
+                '''
+            }
+        }
+
+        stage('Clone Repository') {
+            steps {
+                sshagent(credentials: ['github-ssh-key']) {
+                    git url: 'git@github.com:cyprientemateu/ansible-project.git', branch: 'main'
+                }
+            }
+        }
+
+        stage('Run Ansible Playbook on Remote Server') {
+            steps {
+                sshagent(credentials: ['github-ssh-key']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ec2-user@3.85.118.190 << EOF
+                    cd ${ANSIBLE_HOME}  # Change to the directory containing your playbook
+                    ${ANSIBLE_PLAYBOOK_CMD}
+                    EOF
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Cleanup the workspace
+            cleanWs()
+            // Optional: Additional cleanup commands
+            sh 'rm -rf /tmp/ansible-tmp-*'
+            echo 'Cleanup completed.'
+        }
+    }
+}

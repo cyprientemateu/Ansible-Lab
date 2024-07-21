@@ -22,4 +22,11 @@ users:
     sudoers: "yes"
     sudo_nopasswd: "yes"
     state: "present"
+  - name: "ctem"
+    full_name: "Chris Tem"
+    groups: ["admins", "developers", "sudo"]
+    shell: "/bin/nologin"
+    ssh_key: "ssh-rsa BBBB..."
+    sudoers: "no"
+    state: "present"  
 

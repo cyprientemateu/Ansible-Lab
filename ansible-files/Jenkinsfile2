@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+     environment {
+        ANSIBLE_PLAYBOOK_CMD = "ansible-playbook -i ~/tcc-ansible/inventory.yml ~/tcc-ansible/manage-users.yml --extra-vars '@~/tcc-ansible/users.yml'"
+        ANSIBLE_PLAYBOOK_CMD2 = "ansible-playbook -i ~/tcc-ansible/inventory.yml ~/tcc-ansible/manage-users.yml --extra-vars '@~/tcc-ansible/users.yml'"
+    }
+
+    parameters {
+        string(name: 'INVENTORY_FILE', defaultValue: '~/tcc-ansible/inventory.yml', description: 'Path to the inventory file')
+        string(name: 'PLAYBOOK_FILE', defaultValue: '~/tcc-ansible/manage-users.yml', description: 'Path to the playbook file')
+        string(name: 'EXTRA_VARS_FILE', defaultValue: '~/tcc-ansible/@users.yml', description: 'Path to the extra vars file')
+        string(name: 'PLAYBOOK_FILE2', defaultValue: '~/tcc-ansible/update-all.yml', description: 'Path to the playbook file')
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                // Clone your Git repository
+                git 'git@github.com:cyprientemateu/ansible-project.git'
+            }
+        }
+
+        stage('Deploy with Ansible') {
+            steps {
+                script {
+                    sh """
+                        ansible-playbook -i ${params.INVENTORY_FILE} ${params.PLAYBOOK_FILE} --extra-vars "@${params.EXTRA_VARS_FILE}"
+                    """
+                }
+            }
+        }
+
+         stage('Deploy with Ansible') {
+            steps {
+                script {
+                    sh """
+                        ansible-playbook -i ${params.INVENTORY_FILE} ${params.PLAYBOOK_FILE2} 
+                    """
+                }
+            }
+        }
+    }
+}
